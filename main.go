@@ -39,9 +39,44 @@ func outPutFileGroup(fg []string) {
 	fmt.Printf("\n")
 }
 
+const helpText = `Duplicate File Spot Checker
+
+USAGE:
+    find /path/to/search -type f | duplicate-file-spot-checker [OPTIONS]
+
+DESCRIPTION:
+    Finds likely duplicate files by comparing file sizes and content hashes.
+    Reads file paths from stdin (one per line) and outputs groups of 
+	(probably) duplicate files to stdout, separated by blank lines.
+	For speed, it will only sample larger files, and *will not* compare
+	the entire file, so it could output some false positives.
+	Statistics and errors go to stderr.
+
+OPTIONS:
+    -j NUMBER    Number of concurrent hash operations (default: 8)
+    -h           Show this help message
+
+BEHAVIOR:
+    - Skips directories, symlinks, and special files
+    - Ignores zero-length files
+    - Filters out blacklisted filesystems: tmpfs, sysfs, efivarfs, devfs, tracefs
+    - Groups files by size first, then by content hash
+    - Only outputs groups with 2+ duplicate files
+
+EXAMPLES:
+    find . -type f | duplicate_file_finder
+    find /home -type f | duplicate_file_finder -j 16
+`
+
 func main() {
+	help := flag.Bool("h", false, "show help message")
 	flag.IntVar(&concurrentHashes, "j", 8, "number of concurrent hash operations")
 	flag.Parse()
+
+	if *help {
+		fmt.Fprint(os.Stderr, helpText)
+		os.Exit(0)
+	}
 
 	scanner := bufio.NewScanner(os.Stdin)
 	analyser := newDuplicateFileAnalyser()
